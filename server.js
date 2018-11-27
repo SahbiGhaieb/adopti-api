@@ -12,6 +12,8 @@ const jwt = require('jsonwebtoken')
 var db = require('./models')
 const petModel = require('./models/pet')
 const userModel = require('./models/user')
+
+
 const Pet = petModel(db.sequelize,Sequelize)
 const User = userModel(db.sequelize,Sequelize)
 
@@ -141,7 +143,7 @@ function verifyToken(req, res, next) {
 
 
 app.get('/', function (req, res) {
-    res.json({ 'title': 'my route' })
+    res.json({ 'title': 'my route test branch sahbi' })
 })
 
 
