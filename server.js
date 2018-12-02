@@ -4,6 +4,46 @@ const app = express()
 const port = 3000
 
 
+
+
+//multer for files/images
+const multer = require('multer')
+const cloudinary = require("cloudinary");
+const cloudinaryStorage = require("multer-storage-cloudinary");
+
+//with cloudinary
+cloudinary.config({
+  cloud_name: 'adopti',
+  api_key: '941153729347347',
+  api_secret: 'nKJ-fXnqXB5yzfuWdrHzZe7J36k'
+  })
+  const storage = cloudinaryStorage({
+  cloudinary: cloudinary,
+  folder: "demo",
+  allowedFormats: ["jpg", "png"],
+  transformation: [{ width: 500, height: 500, crop: "limit" }]
+  });
+  const upload = multer({ storage: storage });
+
+// const storage = multer.diskStorage({
+//   destination: function(req, file, cb){
+//     cb(null, './uploads/')
+//   },
+//   filename: function(req, file, cb){
+//     cb(null, file.originalname)
+//   }
+// })
+// const fileFilter= (req, file, cb) => {
+//   if(file.mimetype == 'image/jpeg' || file.mimetype == 'image/png'){
+//     cb(null, true)
+//   }else{
+//     cb(null, false)
+//   }
+// }
+// const upload = multer({storage: storage, fileFilter:fileFilter})
+
+
+
 //JWT AUTH
 const jwt = require('jsonwebtoken')
 
@@ -36,12 +76,15 @@ app.use(bodyParser.urlencoded({ extended: true })); // support encoded bodies
 
 
 //ajouter pet
-app.get('/addpet', verifyToken, function (req, res) {
+app.post('/addpet', upload.single('petImage'),verifyToken, function (req, res) {
     //verify then do all that
     jwt.verify(req.token, 'secretkey', (err, authData) => {
         if(err) {
           res.sendStatus(403);
         } else {
+
+          console.log(req.file)
+
         //   res.json({
         //     message: 'Post created...',
         //     authData
@@ -49,15 +92,14 @@ app.get('/addpet', verifyToken, function (req, res) {
 
 
         var pet = Pet.build({
-            name: req.query.name,
-            age: req.query.age,
-            sexe: req.query.sexe,
-            description: req.query.description,
-            breed: req.query.breed,
-            type: req.query.type,
-            size: req.query.size,
-            sexe: req.query.sexe,
-            photo: req.query.photo
+            name: req.body.name,
+            age: req.body.age,
+            description: req.body.description,
+            breed: req.body.breed,
+            type: req.body.type,
+            size: req.body.size,
+            sexe: req.body.sexe,
+            photo: req.file.url
         })
         pet.save()
         res.send('insertion avec succee')
@@ -110,6 +152,7 @@ app.post('/login', function(req, res){
       }).then(user => 
         jwt.sign({user}, 'secretkey', (err, token) => {
         res.json({
+          user:user,
           token
         });
       }))
