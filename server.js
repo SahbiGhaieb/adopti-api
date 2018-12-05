@@ -152,8 +152,22 @@ app.get('/showallpets', verifyToken, function(req, res){
       });
     
 })
-
-
+//show my pet
+app.get('/showMyPets', verifyToken, function(req, res){
+  jwt.verify(req.token, 'secretkey', (err, authData) => {
+      if(err) {
+        res.sendStatus(403);
+      } else {
+          //here goes the protected code
+          //var id = req.query.id
+          var id = jwt.decode(req.token,'secretkey').user.id
+          //console.log(user.id)
+          Pet.findAll({where:{userId:id}}).then(pet => res.json(pet))
+      }
+    });
+  
+})
+//show specific pet
 app.get('/showpetbyid', verifyToken, function(req, res){
     jwt.verify(req.token, 'secretkey', (err, authData) => {
         if(err) {
