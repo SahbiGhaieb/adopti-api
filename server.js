@@ -162,7 +162,7 @@ app.get('/showMyPets', verifyToken, function(req, res){
           //var id = req.query.id
           var id = jwt.decode(req.token,'secretkey').user.id
           //console.log(user.id)
-          Pet.findAll({where:{userId:id}}).then(pet => res.json(pet))
+          Pet.findAll({where:{userId:id},include: [{ model: User}]}).then(pet => res.json(pet))
       }
     });
   
