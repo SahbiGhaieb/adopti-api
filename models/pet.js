@@ -1,6 +1,16 @@
 'use strict';
 module.exports = (sequelize, DataTypes) => {
   const Pet = sequelize.define('Pet', {
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      allowNull: false,
+      autoIncrement: true,
+    },
+    // user_id: {
+    //   type: DataTypes.UUID,
+    //   allowNull: false
+    // },
     name: DataTypes.STRING,
     description: DataTypes.STRING,
     type: DataTypes.STRING,
@@ -12,6 +22,7 @@ module.exports = (sequelize, DataTypes) => {
   }, {});
   Pet.associate = function(models) {
     // associations can be defined here
+    Pet.belongsTo(models.User);
   };
   return Pet;
 };

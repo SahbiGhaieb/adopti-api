@@ -48,14 +48,21 @@ cloudinary.config({
 const jwt = require('jsonwebtoken')
 
 
-
+//MODELS
 var db = require('./models')
 const petModel = require('./models/pet')
 const userModel = require('./models/user')
 
 
+
+
 const Pet = petModel(db.sequelize,Sequelize)
 const User = userModel(db.sequelize,Sequelize)
+
+
+
+Pet.belongsTo(User);
+
 
 
 
@@ -75,6 +82,27 @@ app.use(bodyParser.json()); // support json encoded bodies
 app.use(bodyParser.urlencoded({ extended: true })); // support encoded bodies
 
 
+//signUp
+app.post('/signUp', upload.single('photo'), (req, res)=>{
+  var user = User.build ({
+      firstName : req.body.firstName,
+      lastName : req.body.lastName,
+      email : req.body.email,
+      photo : req.file.url,
+      num_tel : req.body.num_tel,
+      password : req.body.password
+  })
+  user.save()
+    jwt.sign({user}, 'secretkey', (err, token) => {
+    res.json({
+      user:user,
+      token
+    });
+    console.log(token)
+  console.log('user creé avec succée')
+})
+
+})
 //ajouter pet
 app.post('/addpet', upload.single('petImage'),verifyToken, function (req, res) {
     //verify then do all that
@@ -82,16 +110,10 @@ app.post('/addpet', upload.single('petImage'),verifyToken, function (req, res) {
         if(err) {
           res.sendStatus(403);
         } else {
+        var user = jwt.decode(req.token,'secretkey').user
+        //console.log(user.id)
 
-          console.log(req.file)
-
-        //   res.json({
-        //     message: 'Post created...',
-        //     authData
-        //   });
-
-
-        var pet = Pet.build({
+        var pet = Pet.create({
             name: req.body.name,
             age: req.body.age,
             description: req.body.description,
@@ -99,16 +121,17 @@ app.post('/addpet', upload.single('petImage'),verifyToken, function (req, res) {
             type: req.body.type,
             size: req.body.size,
             sexe: req.body.sexe,
-            photo: req.file.url
+            photo: req.file.url,
+            UserId: user.id
         })
-        pet.save()
+        //console.log(pet)
+        //pet.save()
         res.send('insertion avec succee')
 
 
         }
-      });
+      })
 })
-
 
 
 
@@ -121,7 +144,10 @@ app.get('/showallpets', verifyToken, function(req, res){
         if(err) {
           res.sendStatus(403);
         } else {
-            Pet.findAll().then(pets => res.json(pets))
+          var user = jwt.decode(req.token,'secretkey').user
+            Pet.findAll({
+              include: [{ model: User}]
+           }).then(pets => res.json(pets))
         }
       });
     
@@ -141,6 +167,8 @@ app.get('/showpetbyid', verifyToken, function(req, res){
     
 })
 
+
+
 //LOGIN
 app.post('/login', function(req, res){
     console.log(req.body.email)
@@ -156,7 +184,6 @@ app.post('/login', function(req, res){
           token
         });
       }))
-
 
       
 })
