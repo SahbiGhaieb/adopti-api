@@ -2,45 +2,32 @@ const Sequelize = require('sequelize')
 const express = require('express')
 const app = express()
 const port = 3000
-
+const path = require('path')
 
 
 
 //multer for files/images
 const multer = require('multer')
-const cloudinary = require("cloudinary");
-const cloudinaryStorage = require("multer-storage-cloudinary");
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')))
 
-//with cloudinary
-cloudinary.config({
-  cloud_name: 'adopti',
-  api_key: '941153729347347',
-  api_secret: 'nKJ-fXnqXB5yzfuWdrHzZe7J36k'
+
+
+const storage = multer.diskStorage({
+  destination: function(req, file, cb){
+    cb(null, './uploads/')
+  },
+  filename: function(req, file, cb){
+    cb(null, file.originalname)
+  }
 })
-const storage = cloudinaryStorage({
-  cloudinary: cloudinary,
-  folder: "demo",
-  allowedFormats: ["jpg", "png"],
-  transformation: [{ width: 500, height: 500, crop: "limit" }]
-});
-const upload = multer({ storage: storage });
-
-// const storage = multer.diskStorage({
-//   destination: function(req, file, cb){
-//     cb(null, './uploads/')
-//   },
-//   filename: function(req, file, cb){
-//     cb(null, file.originalname)
-//   }
-// })
-// const fileFilter= (req, file, cb) => {
-//   if(file.mimetype == 'image/jpeg' || file.mimetype == 'image/png'){
-//     cb(null, true)
-//   }else{
-//     cb(null, false)
-//   }
-// }
-// const upload = multer({storage: storage, fileFilter:fileFilter})
+const fileFilter= (req, file, cb) => {
+  if(file.mimetype == 'image/jpeg' || file.mimetype == 'image/png'){
+    cb(null, true)
+  }else{
+    cb(null, false)
+  }
+}
+const upload = multer({storage: storage})
 
 
 
@@ -58,7 +45,8 @@ const userModel = require('./models/user')
 
 const Pet = petModel(db.sequelize, Sequelize)
 const User = userModel(db.sequelize, Sequelize)
-
+User.belongsToMany(User, { as: "Follower", foreignKey: "FollowerId", through: "Follower_Followeds" })
+User.belongsToMany(User, { as: "Followed", foreignKey: "FollowedId", through: "Follower_Followeds" })
 
 
 Pet.belongsTo(User);
@@ -82,13 +70,69 @@ app.use(bodyParser.json()); // support json encoded bodies
 app.use(bodyParser.urlencoded({ extended: true })); // support encoded bodies
 
 
+
+
+//follower_Following
+app.post('/follow', verifyToken, (req, res) => {
+  jwt.verify(req.token, 'secretkey', (err, authData) => {
+    if (err) {
+      res.sendStatus(403);
+    } else {
+      var userOnline = jwt.decode(req.token, 'secretkey').user
+      User.findByPk(req.body.id).then(user =>
+        //res.send(user)
+        user.addFollowed(userOnline.id).then(res.send('followed'))
+      )
+      //res.send(user.firstName)
+
+      // .then(user => 
+      //   user.addFollower(userOnline),
+      //   res.send('followed user'+ user.firstName)
+      //   )
+
+
+    }
+  })
+})
+//showFollowers
+app.post('/showFollowing', verifyToken, (req, res) => {
+  jwt.verify(req.token, 'secretkey', (err, authData) => {
+    if (err) {
+      res.sendStatus(403);
+    } else {
+      var userOnline = jwt.decode(req.token, 'secretkey').user
+      User.findByPk(req.body.id).then(user =>
+        user.getFollowed().then(followers =>
+          res.send(followers)
+        )
+      )
+    }
+  })
+})
+//showFollowing
+app.post('/showFollowers', verifyToken, (req, res) => {
+  jwt.verify(req.token, 'secretkey', (err, authData) => {
+    if (err) {
+      res.sendStatus(403);
+    } else {
+      var userOnline = jwt.decode(req.token, 'secretkey').user
+      User.findByPk(req.body.id).then(user =>
+        user.getFollower().then(followings =>
+          res.send(followings)
+        )
+      )
+    }
+  })
+})
+
+
 //signUp
 app.post('/signUp', upload.single('photo'), (req, res) => {
   var user = User.build({
     firstName: req.body.firstName,
     lastName: req.body.lastName,
     email: req.body.email,
-    photo: req.file.url,
+    photo: 'http://192.168.1.2:3000/uploads/'+req.file.originalname,
     num_tel: req.body.num_tel,
     password: req.body.password
   })
@@ -121,7 +165,7 @@ app.post('/addpet', upload.single('petImage'), verifyToken, function (req, res) 
         type: req.body.type,
         size: req.body.size,
         sexe: req.body.sexe,
-        photo: req.file.url,
+        photo: 'http://192.168.1.2:3000/uploads/'+req.file.filename,
         UserId: user.id
       })
       //console.log(pet)
@@ -152,7 +196,7 @@ app.get('/showallpets', verifyToken, function (req, res) {
   });
 
 })
-//show my pet
+//show my pets
 app.get('/showMyPets', verifyToken, function (req, res) {
   jwt.verify(req.token, 'secretkey', (err, authData) => {
     if (err) {
@@ -188,6 +232,7 @@ app.post('/update', verifyToken, upload.single('photo'), function (req, res) {
     if (err) {
       res.sendStatus(403);
     } else {
+      //console.log(req.headers.authorization)
       //here goes the protected code
       var id = jwt.decode(req.token, 'secretkey').user.id
       User.update(
@@ -196,20 +241,20 @@ app.post('/update', verifyToken, upload.single('photo'), function (req, res) {
           firstName: req.body.firstName,
           lastName: req.body.lastName,
           email: req.body.email,
-          photo: req.file.url,
+          photo: 'http://192.168.1.2:3000/uploads/'+req.file.originalname,
           num_tel: req.body.num_tel,
           password: req.body.password
         },
         { // Clause
-            where: 
-            {
-                id: id
-            }
+          where:
+          {
+            id: id
+          }
         }
-    ).then(count => {
+      ).then(count => {
         //res.json(user)
         res.send('Rows updated ' + count);
-    });
+      });
     }
   })
 })
