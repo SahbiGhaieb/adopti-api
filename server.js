@@ -83,18 +83,25 @@ app.post('/follow', verifyToken, (req, res) => {
         //res.send(user)
         user.addFollowed(userOnline.id).then(res.send('followed'))
       )
-      //res.send(user.firstName)
-
-      // .then(user => 
-      //   user.addFollower(userOnline),
-      //   res.send('followed user'+ user.firstName)
-      //   )
-
-
     }
   })
 })
-//showFollowers
+//Unfollowed
+app.post('/unfollow', verifyToken, (req, res) => {
+  jwt.verify(req.token, 'secretkey', (err, authData) => {
+    if (err) {
+      res.sendStatus(403);
+    } else {
+      var userOnline = jwt.decode(req.token, 'secretkey').user
+      User.findByPk(req.body.id).then(user =>
+        //res.send(user)
+        user.removeFollowed(userOnline.id).then(res.send('unfollowed'))
+      )
+    }
+  })
+})
+
+//showFollowing
 app.post('/showFollowing', verifyToken, (req, res) => {
   jwt.verify(req.token, 'secretkey', (err, authData) => {
     if (err) {
@@ -109,12 +116,13 @@ app.post('/showFollowing', verifyToken, (req, res) => {
     }
   })
 })
-//showFollowing
+//showFollowers
 app.post('/showFollowers', verifyToken, (req, res) => {
   jwt.verify(req.token, 'secretkey', (err, authData) => {
     if (err) {
       res.sendStatus(403);
     } else {
+      //console.log(req.body)
       var userOnline = jwt.decode(req.token, 'secretkey').user
       User.findByPk(req.body.id).then(user =>
         user.getFollower().then(followings =>
@@ -132,7 +140,7 @@ app.post('/signUp', upload.single('photo'), (req, res) => {
     firstName: req.body.firstName,
     lastName: req.body.lastName,
     email: req.body.email,
-    photo: 'http://192.168.1.2:3000/uploads/'+req.file.originalname,
+    photo: 'http://192.168.1.6:3000/uploads/'+req.file.originalname,
     num_tel: req.body.num_tel,
     password: req.body.password
   })
@@ -165,14 +173,65 @@ app.post('/addpet', upload.single('petImage'), verifyToken, function (req, res) 
         type: req.body.type,
         size: req.body.size,
         sexe: req.body.sexe,
-        photo: 'http://192.168.1.2:3000/uploads/'+req.file.filename,
+        photo: 'http://192.168.1.6:3000/uploads/'+req.file.filename,
         UserId: user.id
       })
       //console.log(pet)
       //pet.save()
       res.send('insertion avec succee')
+    }
+  })
+})
+//Update pet
+app.post('/updatepet', upload.single('petImage'), verifyToken, function (req, res) {
+  //verify then do all that
+  jwt.verify(req.token, 'secretkey', (err, authData) => {
+    if (err) {
+      res.sendStatus(403);
+    } else {
+      var user = jwt.decode(req.token, 'secretkey').user
+      //console.log(user.id)
 
-
+      Pet.update(
+        // Values to update
+        {
+          name: req.body.name,
+          age: req.body.age,
+          description: req.body.description,
+          breed: req.body.breed,
+          type: req.body.type,
+          size: req.body.size,
+          sexe: req.body.sexe,
+          photo: 'http://192.168.1.6:3000/uploads/'+req.file.filename,
+          UserId: user.id
+        },
+        { // Clause
+          where:
+          {
+            id: id
+          }
+        }
+      ).then(count => {
+        //res.json(user)
+        res.send('Rows updated ' + count);
+      });
+    }
+  })
+})
+//Delete pet
+app.post('/deletepet', verifyToken, function (req, res) {
+  //verify then do all that
+  jwt.verify(req.token, 'secretkey', (err, authData) => {
+    if (err) {
+      res.sendStatus(403);
+    } else {
+      var user = jwt.decode(req.token, 'secretkey').user
+      Pet.destroy({
+        where: {
+            id: req.body.id
+        }
+    })
+      res.send('PET deleted')
     }
   })
 })
@@ -241,7 +300,7 @@ app.post('/update', verifyToken, upload.single('photo'), function (req, res) {
           firstName: req.body.firstName,
           lastName: req.body.lastName,
           email: req.body.email,
-          photo: 'http://192.168.1.2:3000/uploads/'+req.file.originalname,
+          photo: 'http://192.168.1.6:3000/uploads/'+req.file.originalname,
           num_tel: req.body.num_tel,
           password: req.body.password
         },
