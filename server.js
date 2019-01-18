@@ -13,21 +13,21 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')))
 
 
 const storage = multer.diskStorage({
-  destination: function(req, file, cb){
+  destination: function (req, file, cb) {
     cb(null, './uploads/')
   },
-  filename: function(req, file, cb){
+  filename: function (req, file, cb) {
     cb(null, file.originalname)
   }
 })
-const fileFilter= (req, file, cb) => {
-  if(file.mimetype == 'image/jpeg' || file.mimetype == 'image/png'){
+const fileFilter = (req, file, cb) => {
+  if (file.mimetype == 'image/jpeg' || file.mimetype == 'image/png') {
     cb(null, true)
-  }else{
+  } else {
     cb(null, false)
   }
 }
-const upload = multer({storage: storage})
+const upload = multer({ storage: storage })
 
 
 
@@ -134,13 +134,17 @@ app.post('/showFollowers', verifyToken, (req, res) => {
 })
 
 
+
+
+
+
 //signUp
 app.post('/signUp', upload.single('photo'), (req, res) => {
   var user = User.build({
     firstName: req.body.firstName,
     lastName: req.body.lastName,
     email: req.body.email,
-    photo: 'http://192.168.1.6:3000/uploads/'+req.file.originalname,
+    photo: req.file.originalname,
     num_tel: req.body.num_tel,
     password: req.body.password
   })
@@ -150,7 +154,7 @@ app.post('/signUp', upload.single('photo'), (req, res) => {
       user: user,
       token
     });
-    console.log(token)
+    //console.log(token)
     console.log('user creé avec succée')
   })
 
@@ -165,15 +169,20 @@ app.post('/addpet', upload.single('petImage'), verifyToken, function (req, res) 
       var user = jwt.decode(req.token, 'secretkey').user
       //console.log(user.id)
 
+      var long = parseFloat(req.body.longitude)
+      var lat = parseFloat(req.body.altitude)
+
       var pet = Pet.create({
         name: req.body.name,
         age: req.body.age,
+        longitude: long,
+        altitude: lat,
         description: req.body.description,
         breed: req.body.breed,
         type: req.body.type,
         size: req.body.size,
         sexe: req.body.sexe,
-        photo: 'http://192.168.1.6:3000/uploads/'+req.file.filename,
+        photo: req.file.filename,
         UserId: user.id
       })
       //console.log(pet)
@@ -182,6 +191,26 @@ app.post('/addpet', upload.single('petImage'), verifyToken, function (req, res) 
     }
   })
 })
+
+//get pets by type
+
+app.get('/getpets/:type', verifyToken, function(req, res) {
+  
+
+  jwt.verify(req.token, 'secretkey', (err, authData) => {
+    var type = req.params.type ;
+
+  Pet.findAll({
+      where: {type:type},
+      include: [{model: User}]
+  }).then(pet => res.json(pet))
+  })
+
+
+  
+});
+
+
 //Update pet
 app.post('/updatepet', upload.single('petImage'), verifyToken, function (req, res) {
   //verify then do all that
@@ -202,7 +231,7 @@ app.post('/updatepet', upload.single('petImage'), verifyToken, function (req, re
           type: req.body.type,
           size: req.body.size,
           sexe: req.body.sexe,
-          photo: 'http://192.168.1.6:3000/uploads/'+req.file.filename,
+          photo: req.file.filename,
           UserId: user.id
         },
         { // Clause
@@ -228,14 +257,24 @@ app.post('/deletepet', verifyToken, function (req, res) {
       var user = jwt.decode(req.token, 'secretkey').user
       Pet.destroy({
         where: {
-            id: req.body.id
+          id: req.body.id
         }
-    })
+      })
       res.send('PET deleted')
     }
   })
 })
 
+
+//uploadIlmage
+app.get('/uploads/:upload', function (req, res) {
+  file = req.params.upload;
+  console.log(req.params.upload);
+  var img = fs.readFileSync(__dirname + "/uploads/" + file);
+  res.writeHead(200, { 'Content-Type': 'image/png' });
+  res.end(img, 'binary');
+
+});
 
 
 
@@ -281,7 +320,6 @@ app.get('/showpetbyid', verifyToken, function (req, res) {
       Pet.findById(id).then(pet => res.json(pet), console.log(id))
     }
   });
-
 })
 
 
@@ -300,7 +338,7 @@ app.post('/update', verifyToken, upload.single('photo'), function (req, res) {
           firstName: req.body.firstName,
           lastName: req.body.lastName,
           email: req.body.email,
-          photo: 'http://192.168.1.6:3000/uploads/'+req.file.originalname,
+          photo: req.file.originalname,
           num_tel: req.body.num_tel,
           password: req.body.password
         },
@@ -333,6 +371,10 @@ app.post('/login', function (req, res) {
         user: user,
         token
       });
+      console.log({
+        user: user,
+        token
+      })
     }))
 
 
@@ -359,6 +401,70 @@ function verifyToken(req, res, next) {
   }
 
 }
+
+//PETS FILTERS
+app.get('/getpet/:id', function (req, res) {
+  // let sql = `SELECT * FROM pets WHERE id = ${req.params.id}`;
+  // let query = dbi.query(sql, (err, result) => {
+  //     if(err) throw err;
+  //
+  //     res.json(result);
+  // });
+
+  var id = req.params.id;
+
+  Pet.findOne({
+    where: { id: id },
+    include: [{ model: User }]
+  }).then(pet => res.json(pet))
+});
+
+app.get('/getpets/:type', function (req, res) {
+  // let sql = `SELECT * FROM pets WHERE id = ${req.params.id}`;
+  // let query = dbi.query(sql, (err, result) => {
+  //     if(err) throw err;
+  //
+  //     res.json(result);
+  // });
+
+  var type = req.params.type;
+
+  Pet.findAll({
+    where: { type: type },
+    include: [{ model: User }]
+  }).then(pet => res.json(pet))
+});
+
+// app.get('/getpets/:type', function (req, res) {
+//   // let sql = `SELECT * FROM pets WHERE id = ${req.params.id}`;
+//   // let query = dbi.query(sql, (err, result) => {
+//   //     if(err) throw err;
+//   //
+//   //     res.json(result);
+//   // });
+
+//   var type = req.params.type;
+
+//   Pet.findAll({
+//     where: { type: type },
+//     include: [{ model: User }]
+//   }).then(pet => res.json(pet))
+// });
+
+
+app.get('/getPetsByUser/:UserId', function (req, res) {
+
+  var UserId = req.params.UserId;
+
+  Pet.findAll({
+    where: { UserId: UserId },
+    include: [{ model: User }]
+  }).then(pet => res.json(pet))
+});
+
+//END PETS FILTERS
+
+
 
 
 
